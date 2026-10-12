@@ -295,9 +295,21 @@ sR();hS();document.getElementById('svb').textContent='Update';go('add');
 }
 function dlE(id){
 if(!confirm('Delete?'))return;
+const del=E.find(e=>e.id===id);
 E=E.filter(e=>e.id!==id);
 refE.child(String(id)).remove();
 localStorage.setItem(KY+'e',JSON.stringify(E));
+// clean rankings
+if(del){
+const nm=del.name.toLowerCase();
+const still=E.some(e=>e.name.toLowerCase()===nm);
+if(!still){
+['Jayvee','Digs'].forEach(r=>{
+if(RK[r]){
+const i=RK[r].findIndex(n=>n.toLowerCase()===nm);
+if(i>=0){RK[r].splice(i,1);refR.set(RK);localStorage.setItem(KY+'r',JSON.stringify(RK))}
+}});
+}}
 rL();toast('Deleted');
 }
 
