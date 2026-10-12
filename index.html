@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Massage Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Open Sans',sans-serif;background:#fafafa;color:#333;padding:8px;max-width:600px;margin:0 auto;font-size:13px;-webkit-tap-highlight-color:transparent}
+h1{text-align:center;font-size:1.1rem;margin-bottom:2px;font-weight:700}
+.sync-status{text-align:center;font-size:.6rem;margin-bottom:6px;font-weight:600}
+.sync-ok{color:#95E1D3}.sync-off{color:#F38181}.sync-wait{color:#FCE38A}
+.tabs{display:flex;border:1px solid #ddd;margin-bottom:8px}
+.tb{flex:1;padding:9px 4px;border:none;background:#fff;font-size:.78rem;font-weight:600;cursor:pointer;color:#aaa}
+.tb.on{background:#95E1D3;color:#fff}
+.tc{display:none}.tc.on{display:block}
+.fg{margin-bottom:6px}
+.fg>label{font-size:.7rem;font-weight:600;color:#888;margin-bottom:1px;display:block}
+input,textarea{width:100%;padding:7px 8px;border:1px solid #ddd;font-size:.82rem;background:#fff;font-family:'Open Sans',sans-serif}
+input:focus,textarea:focus{outline:none;border-color:#95E1D3}
+textarea{resize:vertical;min-height:32px}
+.qb{display:flex;gap:4px;margin-bottom:3px}
+.q{padding:5px 10px;border:1px solid #ddd;background:#fff;font-size:.73rem;font-weight:600;cursor:pointer;color:#666}
+.q.on{background:#95E1D3;color:#fff;border-color:#95E1D3}
+.ob{display:flex;gap:4px}
+.o{flex:1;padding:6px;border:1px solid #ddd;background:#fff;font-size:.73rem;font-weight:600;cursor:pointer;text-align:center}
+.o.rec.on{background:#EAFFD0;border-color:#b0d8a0;color:#2d6a3f}
+.o.skip.on{background:#F38181;border-color:#e06060;color:#fff}
+.rb{display:flex;gap:3px;align-items:center}
+.rk{width:30px;height:30px;border:1px solid #ddd;background:#fff;font-size:.78rem;font-weight:700;cursor:pointer;color:#666}
+.rk.on{background:#FCE38A;border-color:#d4b84a;color:#333}
+.rki{font-size:.6rem;color:#bbb;margin-left:4px;line-height:1.2}
+.clr{font-size:.62rem;color:#ccc;cursor:pointer;text-decoration:underline}
+.sv{width:100%;padding:9px;border:none;background:#95E1D3;color:#fff;font-size:.85rem;font-weight:700;cursor:pointer}
+.sv:active{opacity:.8}
+.rd{background:#fff;border:1px solid #ddd;padding:5px 8px;margin-bottom:5px;font-size:.7rem;line-height:1.5}
+.rkb{display:inline-block;background:#FCE38A;padding:0 5px;font-weight:600;font-size:.65rem;margin:0 1px}
+.sr{display:flex;gap:4px;margin-bottom:4px;flex-wrap:wrap}
+.sr input{flex:1;min-width:100px;padding:5px 8px;font-size:.78rem}
+.fb{display:flex;border:1px solid #ddd}
+.f{padding:5px 8px;border:none;background:#fff;font-size:.68rem;font-weight:600;cursor:pointer;color:#aaa;border-right:1px solid #eee}
+.f:last-child{border-right:none}.f.on{background:#95E1D3;color:#fff}
+.sts{font-size:.62rem;color:#ccc;margin-bottom:3px}
+table{width:100%;border-collapse:collapse;font-size:.72rem;background:#fff}
+th{background:#f0f0f0;text-align:left;padding:4px 5px;font-size:.65rem;font-weight:700;color:#888;border:1px solid #ddd;white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{background:#e4e4e4}
+th .ar{font-size:.55rem;margin-left:2px;color:#bbb}
+td{padding:3px 5px;border:1px solid #eee;vertical-align:top}
+tr:hover{background:#f9f9f9}
+td.nm{font-weight:600;white-space:nowrap}
+.tg{font-size:.6rem;font-weight:600;display:inline-block;padding:0 4px}
+.tg-r{background:#EAFFD0;color:#2d6a3f}
+.tg-s{background:#F38181;color:#fff}
+.tg-o{background:#f5f5f5;color:#aaa}
+.act{white-space:nowrap}
+.act button{border:none;background:none;cursor:pointer;font-size:.65rem;padding:1px 3px;color:#bbb}
+.act button:active{color:#333}
+.st{font-size:.68rem;color:#999;text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px;font-weight:700}
+.nt{display:inline-block;padding:3px 8px;font-size:.73rem;font-weight:600;margin:2px}
+.nn{background:#FCE38A;color:#7a6210}
+.mt{text-align:center;color:#ddd;padding:16px;font-size:.8rem}
+.alltried{background:#F38181;color:#fff;padding:10px;text-align:center;font-weight:700;font-size:.85rem;margin:8px 0}
+.toast{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:6px 16px;font-size:.75rem;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:99}.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<h1>💆 Massage Tracker</h1>
+<div class="sync-status" id="syncSt">⏳ Connecting...</div>
+<div class="tabs">
+<button class="tb on" data-t="add" onclick="go('add')">Add</button>
+<button class="tb" data-t="list" onclick="go('list')">History</button>
+<button class="tb" data-t="check" onclick="go('check')">Name Check</button>
+</div>
+
+<div id="t-add" class="tc on">
+<div class="fg"><label>Therapist</label><input id="i-name" placeholder="Name"></div>
+<div class="fg"><label>Date</label><input type="date" id="i-date"></div>
+<div class="fg"><label>Who Received</label>
+<div class="qb" id="qr"><button class="q" onclick="tR(this,'Jayvee')">Jayvee</button><button class="q" onclick="tR(this,'Digs')">Digs</button></div>
+<input id="i-recv" placeholder="Or type..." oninput="sR()"></div>
+<div class="fg"><label>Service</label>
+<div class="qb" id="qs"><button class="q" onclick="tS(this,'2 Hours Combi')">2hr Combi</button><button class="q" onclick="tS(this,'1 Hour')">1 Hour</button><button class="q" onclick="tS(this,'Body Scrub')">Body Scrub</button></div>
+<input id="i-svc" placeholder="Or type..." oninput="hS()"></div>
+<div class="fg"><label>Opinion</label>
+<div class="ob"><button class="o rec" onclick="tO('recommended')">👍 Recommend</button><button class="o skip" onclick="tO('skip')">🚫 Not Rebook</button></div></div>
+<div class="fg"><label>Rank <span class="clr" onclick="sK(0)">(clear)</span></label>
+<div class="rb">
+<button class="rk" onclick="sK(1)">1</button><button class="rk" onclick="sK(2)">2</button><button class="rk" onclick="sK(3)">3</button><button class="rk" onclick="sK(4)">4</button><button class="rk" onclick="sK(5)">5</button>
+<span class="rki" id="rki"></span>
+</div></div>
+<div class="fg"><label>Comments</label><textarea id="i-cmt" rows="2" placeholder="Notes..."></textarea></div>
+<button class="sv" id="svb" onclick="save()">Save</button>
+</div>
+
+<div id="t-list" class="tc">
+<div class="rd" id="rdiv"></div>
+<div class="sr">
+<input id="sq" placeholder="Search..." oninput="rL()">
+<div class="fb" id="fb-recv"><button class="f on" data-f="all" onclick="sF('all')">All</button><button class="f" data-f="Jayvee" onclick="sF('Jayvee')">J</button><button class="f" data-f="Digs" onclick="sF('Digs')">D</button></div>
+<div class="fb" id="fb-op"><button class="f on" data-o="all" onclick="sO('all')">All</button><button class="f" data-o="recommended" onclick="sO('recommended')">👍</button><button class="f" data-o="okay" onclick="sO('okay')">OK</button><button class="f" data-o="skip" onclick="sO('skip')">🚫</button></div>
+</div>
+<div class="sts" id="sts"></div>
+<div id="eL" style="overflow-x:auto"></div>
+</div>
+
+<div id="t-check" class="tc">
+<div class="fg"><label>Paste message from parlor</label>
+<textarea id="i-paste" rows="5" placeholder="Paste the whole text message..."></textarea></div>
+<button class="sv" onclick="chk()">Check Names</button>
+<div id="cr"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+firebase.initializeApp({
+apiKey:"AIzaSyAdkoMUcHiNjO-iBBbvUDQ2DmdOJLdMi7g",
+authDomain:"mtracker-533b6.firebaseapp.com",
+databaseURL:"https://mtracker-533b6-default-rtdb.asia-southeast1.firebasedatabase.app",
+projectId:"mtracker-533b6",
+storageBucket:"mtracker-533b6.firebasestorage.app",
+messagingSenderId:"828780585928",
+appId:"1:828780585928:web:b5928034e6de589e8296fd"
+});
+const db=firebase.database(),refE=db.ref('entries'),refR=db.ref('rankings');
+
+const DF='2 Hours Combi',KY='mt11';
+const ST=new Set('good,goodafternoon,goodmorning,goodevening,goodnight,goodpm,goodam,afternoon,morning,evening,night,hi,hello,hey,po,opo,naman,lang,din,rin,nga,pala,na,pa,ba,daw,raw,kasi,mga,ang,ng,sa,ko,mo,nyo,natin,namin,kami,tayo,sila,siya,ako,ikaw,kayo,yung,ito,iyon,yun,dito,doon,diyan,pwede,puwede,meron,wala,mayroon,magandang,umaga,hapon,gabi,salamat,kumusta,sige,oo,hindi,sir,maam,madam,boss,kuya,ate,miss,mister,yes,no,ok,okay,sure,thanks,thank,welcome,noted,copy,available,unavailable,please,pls,kindly,the,is,are,was,were,be,been,am,pm,for,and,or,but,not,at,in,on,to,of,by,with,from,we,us,our,you,your,my,me,he,she,it,they,them,his,her,its,this,that,these,those,have,has,had,can,could,will,would,may,might,shall,should,do,does,did,get,got,want,need,like,know,see,come,go,going,look,looking,wait,waiting,let,ask,try,send,sent,text,call,message,reply,chat,today,tonight,tomorrow,now,later,still,already,here,there,only,just,also,too,all,any,some,other,another,each,every,if,then,when,while,so,very,much,many,more,new,next,last,first,about,between,after,before,again,where,how,what,who,which,why,up,out,off,down,back,select,choose,pick,check,number,massage,therapist,masseuse,masseur,service,services,schedule,appointment,book,booking,reserve,reserved,slot,slots,lineup,line,list,hour,hours,min,mins,minutes,home,hotel,room,door,floor,place,free,busy,full,open,close,closed,start,end,done,finish,finished,body,scrub,combo,combi,swedish,shiatsu,hilot,ventosa,deep,tissue,oil,hot,stone,foot,thai,aroma,reflexology,sports,pressure,relax,relaxing,promo,discount,price,peso,php,rate,rates,pay,payment,below,above,following,follow,names,name,oclock,delivery,visit,avail,client,regular,request,requested,preferred,handle,handled,team,staff'.split(','));
+
+let E=[],RK={Jayvee:[],Digs:[]},cOp=null,cRk=0,eId=null,fl='all',fOp='all',sortCol='date',sortDir=-1,cSortCol='name',cSortDir=1,chkData=null,fbReady=false;
+
+function setSS(t,c){const el=document.getElementById('syncSt');el.textContent=t;el.className='sync-status '+c}
+
+function init(){
+document.getElementById('i-date').valueAsDate=new Date();
+document.getElementById('i-svc').value=DF;hS();
+// listen for connection
+db.ref('.info/connected').on('value',snap=>{
+if(snap.val()){setSS('🟢 Synced','sync-ok')}
+else{setSS('🔴 Offline — changes saved locally','sync-off')}
+});
+// listen for data
+refE.on('value',snap=>{
+const v=snap.val();
+if(v){E=Object.values(v);fbReady=true;localStorage.setItem(KY+'e',JSON.stringify(E));refresh()}
+else if(!fbReady){
+const lc=localStorage.getItem(KY+'e');
+if(lc){E=JSON.parse(lc)}else{E=seedData()}
+pushAll();fbReady=true;refresh();}
+});
+refR.on('value',snap=>{
+const v=snap.val();
+if(v){RK=v;localStorage.setItem(KY+'r',JSON.stringify(RK));refresh()}
+else{
+const lc=localStorage.getItem(KY+'r');
+if(lc){RK=JSON.parse(lc)}else{RK={Jayvee:["George","Terrence","Alden"],Digs:[]}}
+refR.set(RK);refresh();}
+});
+}
+
+function pushAll(){const o={};E.forEach(e=>{o[e.id]=e});refE.set(o)}
+function refresh(){const ct=document.querySelector('.tb.on');if(ct){const t=ct.dataset.t;if(t==='list')rL();if(t==='add')uRI()}}
+
+function seedData(){return[
+{id:1,name:"Rafael",date:"2026-04-02",receiver:"Jayvee",service:DF,opinion:null,comments:""},
+{id:2,name:"Zoren",date:"2026-04-02",receiver:"Digs",service:DF,opinion:null,comments:""},
+{id:3,name:"Terrence",date:"2026-04-27",receiver:"Jayvee",service:DF,opinion:null,comments:""},
+{id:4,name:"Luke",date:"2026-04-27",receiver:"Digs",service:DF,opinion:null,comments:""},
+{id:5,name:"Terrence",date:"2026-06-03",receiver:"Jayvee",service:DF,opinion:null,comments:""},
+{id:6,name:"Andrew",date:"2026-06-03",receiver:"Digs",service:DF,opinion:null,comments:""},
+{id:7,name:"Terrence",date:"2026-06-30",receiver:"Jayvee",service:DF,opinion:null,comments:""},
+{id:8,name:"Gabriel",date:"2026-06-30",receiver:"Digs",service:DF,opinion:"recommended",comments:""},
+{id:9,name:"Alden",date:"2026-08-12",receiver:"Jayvee",service:DF,opinion:null,comments:""},
+{id:10,name:"Calvin",date:"2026-08-12",receiver:"Digs",service:"Body Scrub",opinion:"recommended",comments:""},
+{id:11,name:"Daniel",date:"2026-08-16",receiver:"Jayvee",service:DF,opinion:"skip",comments:""},
+{id:12,name:"Randy",date:"2026-08-16",receiver:"Digs",service:DF,opinion:"skip",comments:""},
+{id:13,name:"George",date:"2026-08-23",receiver:"Jayvee",service:DF,opinion:null,comments:""},
+{id:14,name:"Adrian",date:"2026-08-23",receiver:"Digs",service:DF,opinion:"skip",comments:""},
+{id:15,name:"Adrian",date:"2026-09-11",receiver:"Jayvee",service:DF,opinion:"skip",comments:""},
+{id:16,name:"Axel",date:"2026-09-11",receiver:"Digs",service:DF,opinion:"skip",comments:""},
+{id:17,name:"Jackson",date:"2026-09-23",receiver:"Jayvee",service:DF,opinion:null,comments:""},
+{id:18,name:"Gabriel",date:"2026-09-23",receiver:"Digs",service:"Body Scrub",opinion:null,comments:""},
+{id:19,name:"Ismael",date:"2026-09-30",receiver:"Jayvee",service:DF,opinion:null,comments:""},
+{id:20,name:"Jackson",date:"2026-09-30",receiver:"Digs",service:DF,opinion:null,comments:""},
+{id:21,name:"Peter",date:"2026-10-11",receiver:"Jayvee",service:DF,opinion:null,comments:""},
+{id:22,name:"Ismael",date:"2026-10-11",receiver:"Digs",service:DF,opinion:null,comments:""}
+]}
+
+function go(t){
+document.querySelectorAll('.tc').forEach(e=>e.classList.remove('on'));
+document.querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
+document.getElementById('t-'+t).classList.add('on');
+document.querySelector(`[data-t="${t}"]`).classList.add('on');
+if(t==='list')rL();if(t==='add')uRI();
+}
+
+function tR(btn,v){
+const inp=document.getElementById('i-recv');
+if(inp.value===v){inp.value='';btn.classList.remove('on')}
+else{inp.value=v;document.querySelectorAll('#qr .q').forEach(b=>b.classList.remove('on'));btn.classList.add('on')}
+uRI();
+}
+function sR(){const v=document.getElementById('i-recv').value.trim();document.querySelectorAll('#qr .q').forEach(b=>b.classList.toggle('on',b.textContent===v));uRI()}
+function tS(btn,v){document.getElementById('i-svc').value=v;document.querySelectorAll('#qs .q').forEach(b=>b.classList.remove('on'));btn.classList.add('on')}
+function hS(){const v=document.getElementById('i-svc').value;const m={'2 Hours Combi':'2hr Combi','1 Hour':'1 Hour','Body Scrub':'Body Scrub'};document.querySelectorAll('#qs .q').forEach(b=>b.classList.toggle('on',m[v]===b.textContent))}
+function tO(v){cOp=cOp===v?null:v;document.querySelector('.o.rec').classList.toggle('on',cOp==='recommended');document.querySelector('.o.skip').classList.toggle('on',cOp==='skip')}
+function sK(n){cRk=n===cRk?0:n;document.querySelectorAll('.rk').forEach((b,i)=>b.classList.toggle('on',i+1===cRk))}
+function uRI(){
+const rv=document.getElementById('i-recv').value.trim();
+document.getElementById('rki').textContent=rv&&RK[rv]&&RK[rv].length?RK[rv].map((n,j)=>(j+1)+'.'+n).join(' '):'';
+}
+
+function save(){
+const nm=document.getElementById('i-name').value.trim();
+const dt=document.getElementById('i-date').value;
+const rv=document.getElementById('i-recv').value.trim();
+const sv=document.getElementById('i-svc').value.trim()||DF;
+const cm=document.getElementById('i-cmt').value.trim();
+if(!nm){toast('Enter name');return}
+if(!rv){toast('Select receiver');return}
+const id=eId||Date.now();
+const en={id,name:cap(nm),date:dt,receiver:rv,service:sv,opinion:cOp,comments:cm};
+if(eId){const i=E.findIndex(e=>e.id===eId);if(i>=0)E[i]=en;eId=null;document.getElementById('svb').textContent='Save';toast('Updated')}
+else{E.push(en);toast('Saved')}
+refE.child(String(id)).set(en);
+localStorage.setItem(KY+'e',JSON.stringify(E));
+if(cRk>0){if(!RK[rv])RK[rv]=[];const a=RK[rv],x=a.findIndex(n=>n.toLowerCase()===nm.toLowerCase());if(x>=0)a.splice(x,1);a.splice(cRk-1,0,cap(nm));if(a.length>5)a.length=5;refR.set(RK);localStorage.setItem(KY+'r',JSON.stringify(RK))}
+clr();
+}
+function clr(){
+document.getElementById('i-name').value='';document.getElementById('i-date').valueAsDate=new Date();
+document.getElementById('i-recv').value='';document.getElementById('i-svc').value=DF;document.getElementById('i-cmt').value='';
+cOp=null;cRk=0;eId=null;
+document.querySelectorAll('.q,.o,.rk').forEach(b=>b.classList.remove('on'));
+hS();document.getElementById('svb').textContent='Save';uRI();
+}
+
+function sF(v){fl=v;document.querySelectorAll('#fb-recv .f').forEach(b=>b.classList.toggle('on',b.dataset.f===v));rL()}
+function sO(v){fOp=v;document.querySelectorAll('#fb-op .f').forEach(b=>b.classList.toggle('on',b.dataset.o===v));rL()}
+function tSort(col){if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=col==='name'?1:-1}rL()}
+
+function opTxt(o){
+if(o==='recommended')return'<span class="tg tg-r">Recommended</span>';
+if(o==='skip')return'<span class="tg tg-s">Not Recommended</span>';
+return'<span class="tg tg-o">Okay</span>';
+}
+function opKey(o){return o==='recommended'?'recommended':o==='skip'?'skip':'okay'}
+function opSort(o){return o==='recommended'?2:o==='skip'?0:1}
+
+function rL(){
+const rd=document.getElementById('rdiv');
+let rh='';['Jayvee','Digs'].forEach(r=>{rh+=`<b>${r}:</b> `;rh+=RK[r]&&RK[r].length?RK[r].map((n,i)=>`<span class="rkb">#${i+1} ${esc(n)}</span>`).join(' '):'<span style="color:#ddd">none</span>';rh+='&nbsp;&nbsp;'});
+rd.innerHTML=rh;
+const q=(document.getElementById('sq').value||'').toLowerCase();
+let f=E.filter(e=>{
+if(q&&!e.name.toLowerCase().includes(q))return false;
+if(fl!=='all'&&e.receiver!==fl)return false;
+if(fOp!=='all'&&opKey(e.opinion)!==fOp)return false;
+return true;
+});
+f.sort((a,b)=>{let v=0;switch(sortCol){
+case'date':v=(a.date||'').localeCompare(b.date||'');break;
+case'name':v=a.name.localeCompare(b.name);break;
+case'receiver':v=a.receiver.localeCompare(b.receiver);break;
+case'opinion':v=opSort(a.opinion)-opSort(b.opinion);break;
+case'service':v=(a.service||'').localeCompare(b.service||'');break;
+}return v*sortDir});
+document.getElementById('sts').textContent=f.length+' entries · '+new Set(f.map(e=>e.name.toLowerCase())).size+' therapists';
+const el=document.getElementById('eL');
+if(!f.length){el.innerHTML='<div class="mt">No entries</div>';return}
+const ar=c=>sortCol===c?(sortDir===1?'▲':'▼'):'';
+el.innerHTML=`<table><tr>
+<th onclick="tSort('date')">Date <span class="ar">${ar('date')}</span></th>
+<th onclick="tSort('name')">Name <span class="ar">${ar('name')}</span></th>
+<th onclick="tSort('receiver')">For <span class="ar">${ar('receiver')}</span></th>
+<th onclick="tSort('opinion')">Opinion <span class="ar">${ar('opinion')}</span></th>
+<th onclick="tSort('service')">Service <span class="ar">${ar('service')}</span></th>
+<th>Notes</th><th></th>
+</tr>${f.map(e=>{const sv=e.service===DF?'':esc(e.service);
+return`<tr><td>${fD(e.date)}</td><td class="nm">${esc(e.name)}</td><td>${esc(e.receiver)}</td><td>${opTxt(e.opinion)}</td><td>${sv}</td><td>${esc(e.comments||'')}</td><td class="act"><button onclick="edE(${e.id})">✏️</button><button onclick="dlE(${e.id})">🗑</button></td></tr>`}).join('')}</table>`;
+}
+function fD(d){if(!d)return'';const t=new Date(d+'T00:00:00');return t.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
+
+function edE(id){
+const e=E.find(x=>x.id===id);if(!e)return;
+document.getElementById('i-name').value=e.name;document.getElementById('i-date').value=e.date||'';
+document.getElementById('i-recv').value=e.receiver;document.getElementById('i-svc').value=e.service||DF;
+document.getElementById('i-cmt').value=e.comments||'';cOp=e.opinion;cRk=0;eId=id;
+document.querySelector('.o.rec').classList.toggle('on',cOp==='recommended');
+document.querySelector('.o.skip').classList.toggle('on',cOp==='skip');
+document.querySelectorAll('.rk').forEach(b=>b.classList.remove('on'));
+sR();hS();document.getElementById('svb').textContent='Update';go('add');
+}
+function dlE(id){
+if(!confirm('Delete?'))return;
+E=E.filter(e=>e.id!==id);
+refE.child(String(id)).remove();
+localStorage.setItem(KY+'e',JSON.stringify(E));
+rL();toast('Deleted');
+}
+
+function cSort(col){if(cSortCol===col)cSortDir*=-1;else{cSortCol=col;cSortDir=col==='name'?1:-1}rChk()}
+
+function chk(){
+const txt=document.getElementById('i-paste').value.trim();
+if(!txt){toast('Paste text');return}
+const names=exN(txt);
+if(!names.length){document.getElementById('cr').innerHTML='<div class="mt">No names detected</div>';return}
+const tried=[],nt=[];
+const seen=new Set();
+names.forEach(n=>{
+const lo=n.toLowerCase();
+if(seen.has(lo))return;
+seen.add(lo);
+const m=E.filter(e=>e.name.toLowerCase()===lo);
+m.length?tried.push({name:n,m}):nt.push(n);
+});
+chkData={tried,nt};
+rChk();
+}
+
+function rChk(){
+if(!chkData)return;
+const{tried,nt}=chkData;
+let h='';
+if(nt.length===0&&tried.length>0){
+h+=`<div class="alltried">⚠️ All names on this list have been tried already</div>`;
+}
+if(nt.length){
+const sNt=[...nt];
+if(cSortCol==='name')sNt.sort((a,b)=>a.localeCompare(b)*cSortDir);
+h+=`<p class="st">🆕 Not yet tried (${sNt.length})</p>`;
+h+=sNt.map(n=>`<span class="nt nn">${esc(n)}</span>`).join('');
+}
+if(tried.length){
+let rows=[];
+tried.forEach(t=>{t.m.forEach(m=>{rows.push({tname:t.name,receiver:m.receiver,date:m.date,opinion:m.opinion,service:m.service})})});
+rows.sort((a,b)=>{let v=0;switch(cSortCol){
+case'name':v=a.tname.localeCompare(b.tname);break;
+case'receiver':v=a.receiver.localeCompare(b.receiver);break;
+case'date':v=(a.date||'').localeCompare(b.date||'');break;
+case'opinion':v=opSort(a.opinion)-opSort(b.opinion);break;
+case'service':v=(a.service||'').localeCompare(b.service||'');break;
+}return v*cSortDir});
+const car=c=>cSortCol===c?(cSortDir===1?'▲':'▼'):'';
+h+=`<p class="st">✅ Already tried (${tried.length})</p>`;
+h+=`<table><tr>
+<th onclick="cSort('name')">Name <span class="ar">${car('name')}</span></th>
+<th onclick="cSort('receiver')">For <span class="ar">${car('receiver')}</span></th>
+<th onclick="cSort('date')">Date <span class="ar">${car('date')}</span></th>
+<th onclick="cSort('opinion')">Opinion <span class="ar">${car('opinion')}</span></th>
+<th onclick="cSort('service')">Service <span class="ar">${car('service')}</span></th>
+</tr>`;
+rows.forEach(r=>{
+const sv=r.service===DF?'':esc(r.service);
+h+=`<tr><td class="nm">${esc(r.tname)}</td><td>${esc(r.receiver)}</td><td>${fD(r.date)}</td><td>${opTxt(r.opinion)}</td><td>${sv}</td></tr>`;
+});
+h+=`</table>`;
+}
+document.getElementById('cr').innerHTML=h;
+}
+
+function exN(txt){
+const known=new Set(E.map(e=>e.name.toLowerCase()));
+const found=[],seen=new Set();
+txt.split(/[\n,]+/).forEach(line=>{
+line=line.trim().replace(/^[\d\.\)\-\•\*\#]+\s*/,'').replace(/[\.!?;:]+$/,'').trim();
+if(!line)return;
+line.split(/\s+/).forEach(w=>{
+let c=w.replace(/[^a-zA-ZÀ-ÿ\-]/g,'');
+if(!c||c.length<2)return;
+const lo=c.toLowerCase();
+if(ST.has(lo))return;
+if(known.has(lo))c=E.find(e=>e.name.toLowerCase()===lo).name;else c=cap(c);
+if(!seen.has(lo)){seen.add(lo);found.push(c)}
+})});
+return found;
+}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase()}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1500)}
+init();
+</script>
+</body>
+</html>
